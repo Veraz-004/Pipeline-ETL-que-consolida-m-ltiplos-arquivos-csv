@@ -1,11 +1,16 @@
 import logging
 from pathlib import Path
-from extract import Extract
-from transform import Transform
-from load import Load
-from analysis import lucro_max, receita_total, dia_quantidade, dia_receita
-from relatório import relatorio
+import extract
+import load
+import config as c
+import analysis as a
+import transform
+import relatório
+import utils
 Path("logs").mkdir(parents=True, exist_ok=True)
+log=logging.getLogger(__name__)
+
+
 logging.basicConfig(
     level=logging.INFO,
     format=" %(asctime)s | %(levelname)s | %(message)s",
@@ -15,25 +20,24 @@ logging.basicConfig(
     ]
     
 )
-log=logging.getLogger(__name__)
 
-#* este arquivo só irá rodar as funções dos outros arquivos
-def rodar_pipeline(log):
-    silver, gold, arquivos = Extract(log)
-    arqvs, arqvs_gold = Transform(arquivos, log)
-    Load(arqvs, arqvs_gold, silver, gold, log)
-    return arqvs, gold
-
-def rodar_analysis(arqvs, gold):
-    if arqvs:
-        produto = lucro_max(gold, log)
-        receita_total_var = receita_total(gold, log)
-        dia_max_quantidade = dia_quantidade(gold, log)
-        dia_max_receita = dia_receita(gold, log)
-        return produto, receita_total_var, dia_max_quantidade, dia_max_receita
+def ETL():
+    arquivos = extract.Extract(log)
+    arqvs, arqvs_gold=transform.Transform(arquivos, log)
+    load.Load(arqvs, arqvs_gold, log)
 
 
 if __name__ == "__main__":
-    arqvs, gold=rodar_pipeline(log)
-    produto, receita_total_var, dia_max_quantidade, dia_max_receita = rodar_analysis(arqvs, gold)
-    relatorio(produto, receita_total_var, dia_max_quantidade, dia_max_receita)
+    c.diretorios(c.data, c.bronze_dir, c.silver_dir, c.gold_dir, c.logs_dir, c.relatorio_dir)
+    ETL()
+    df = utils.data_verify(log)
+    if df is None or df.empty:
+        log.error("Nenhum dado para criar métricas")
+    else:
+        produto = a.lucro_max(df, log)
+        receita_total_var = a.receita_total(df, log)
+        dia_max_quantidade = a.dia_quantidade(df, log)
+        dia_max_receita = a.dia_receita(df, log)
+        relatório.relatorio(produto, receita_total_var, dia_max_quantidade, dia_max_receita)
+        log.info(f"Métricas criadas e salvas em: {c.relatorio}")
+        log.info("Operação concluida com sucesso")

@@ -43,7 +43,8 @@ def Transform(arquivos, log):
         })
         arqvs.append(df)
         arqvs_gold.append(df_gold)
-    log.info("Dataframes para análise prontos")
+    if arqvs != []:
+        log.info("Dataframes para análise prontos")
     return arqvs, arqvs_gold
 #* a função retorna duas listas, uma com os dados originais limpos(arqvs), e outra com os dados para análise(arqvs_gold)
 
